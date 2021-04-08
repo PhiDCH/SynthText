@@ -43,7 +43,7 @@ class TextRegions(object):
     ransac_fit_trials = 100
     min_z_projection = 0.25
 
-    minW = 20
+    minW = 30
 
     @staticmethod
     def filter_rectified(mask):
@@ -80,7 +80,6 @@ class TextRegions(object):
 
             coords = np.c_[xs, ys].astype('float32')
             rect = cv2.minAreaRect(coords)
-            # box = np.array(cv2.cv.BoxPoints(rect))
             box = np.array(cv2.boxPoints(rect))
             h, w, rot = TextRegions.get_hw(box, return_rot=True)
 
@@ -193,6 +192,7 @@ def rescale_frontoparallel(p_fp, box_fp, p_im):
 
     Returns the scale 's' to scale the fronto-parallel points by.
     """
+        
     l1 = np.linalg.norm(box_fp[1, :] - box_fp[0, :])
     l2 = np.linalg.norm(box_fp[1, :] - box_fp[2, :])
 
@@ -224,6 +224,17 @@ def get_text_placement_mask(xyz, mask, plane, pad=2, viz=False):
                                      mode=cv2.RETR_CCOMP,
                                      method=cv2.CHAIN_APPROX_SIMPLE)
     contour = [np.squeeze(c).astype('float') for c in contour]
+    
+    
+    
+    len_con = []
+    for con in contour:
+        len_con.append(len(con))
+    index = len_con.index(max(len_con))
+    contour = [contour[index]]
+
+    
+    
     # plane = np.array([plane[1],plane[0],plane[2],plane[3]])
     H, W = mask.shape[:2]
 
@@ -264,9 +275,19 @@ def get_text_placement_mask(xyz, mask, plane, pad=2, viz=False):
     place_mask = 255 * np.ones((int(np.ceil(COL)) + pad, int(np.ceil(ROW)) + pad), 'uint8')
 
     pts_fp_i32 = [(pts_fp[i] + minxy[None, :]).astype('int32') for i in range(len(pts_fp))]
+    
+    
+    
+    
+    # cv2.drawContours(place_mask, pts_fp_i32, -1, 0,
+    #                  thickness=cv2.FILLED,
+    #                  lineType=8, hierarchy=hier)
     cv2.drawContours(place_mask, pts_fp_i32, -1, 0,
-                     thickness=cv2.FILLED,
-                     lineType=8, hierarchy=hier)
+                    thickness=cv2.FILLED,
+                    lineType=8)
+    
+    
+    
 
     if not TextRegions.filter_rectified((~place_mask).astype('float') / 255):
         return
@@ -279,15 +300,6 @@ def get_text_placement_mask(xyz, mask, plane, pad=2, viz=False):
     Hinv, _ = cv2.findHomography(pts_fp_i32[0].astype('float32').copy(),
                                  pts[0].astype('float32').copy(),
                                  method=0)
-    if viz:
-        plt.subplot(1, 2, 1)
-        plt.imshow(mask)
-        plt.subplot(1, 2, 2)
-        plt.imshow(~place_mask)
-        for i in range(len(pts_fp_i32)):
-            plt.scatter(pts_fp_i32[i][:, 0], pts_fp_i32[i][:, 1],
-                        edgecolors='none', facecolor='g', alpha=0.5)
-        plt.show()
 
     return place_mask, H, Hinv
 
@@ -372,13 +384,12 @@ def viz_textbb(fignum, text_im, bb_list, alpha=1.0):
 
 class RendererV3(object):
 
-    def __init__(self, data_dir, max_time=None):
+    def __init__(self, data_dir):
         self.text_renderer = tu.RenderFont(data_dir)
         self.colorizer = Colorize(data_dir)
         self.min_char_height = 8  # px
         self.min_asp_ratio = 0.4  #
         self.max_text_regions = 7
-        self.max_time = max_time
 
     def filter_regions(self, regions, filt):
         """
@@ -622,10 +633,12 @@ class RendererV3(object):
             # finally place some text:
             nregions = len(regions['place_mask'])
             if nregions < 1:  # no good region to place text on
+                print('no good region to place text on')
                 return []
         except:
             # failure in pre-text placement
             # import traceback
+            print('failure in pre-text placement')
             traceback.print_exc()
             return []
 
@@ -659,23 +672,9 @@ class RendererV3(object):
 
             for idx in reg_range:
                 ireg = reg_idx[idx]
-                try:
-                    if self.max_time is None:
-                        txt_render_res = self.place_text(img, place_masks[ireg],
+                txt_render_res = self.place_text(img, place_masks[ireg],
                                                          regions['homography'][ireg],
                                                          regions['homography_inv'][ireg])
-                    else:
-                        with time_limit(self.max_time):
-                            txt_render_res = self.place_text(img, place_masks[ireg],
-                                                             regions['homography'][ireg],
-                                                             regions['homography_inv'][ireg])
-                except TimeoutException as msg:
-                    print(msg)
-                    continue
-                except:
-                    traceback.print_exc()
-                    # some error in placing text on the region
-                    continue
 
                 if txt_render_res is not None:
                     if DEBUG:
