@@ -538,7 +538,29 @@ class RendererV3(object):
         im_final = self.colorizer.color(rgb, [text_mask], np.array([min_h]))
 
         return im_final, text, bb, text_mask
+    
+    def place_plain_text(self, rgb, mask):
+        font = self.text_renderer.font_state.sample()
+        font = self.text_renderer.font_state.init_font(font)
+        
+        render_res = self.text_renderer.render_sample(font, mask)
+        if render_res is None:  # rendering not successful
+            return  # None
+        else:
+            text_mask, loc, bb, text = render_res
+        
+        # return text_mask
+        
+        # get the minimum height of the character-BB:
+        min_h = self.get_min_h(bb, text)
 
+        # feathering:
+        text_mask = self.feather(text_mask, min_h)
+        im_final = self.colorizer.color(rgb, [text_mask], np.array([min_h]))
+
+        return im_final, text, bb, text_mask
+            
+    
     def get_num_text_regions(self, nregions):
         # return nregions
         nmax = min(self.max_text_regions, nregions)
@@ -603,7 +625,25 @@ class RendererV3(object):
             ninstance : number of times image should be
                         used to place text.
 
-        Returns:
+        Returns:HxWx3 image rgb values (uint8)HxWx3 image rgb values (uint8)
+            depth : HxW depth values (float)
+            seg   : HxW segmentation region masks
+            area  : number of pixels in each region
+            label : region labels == unique(seg) / {0}
+                   i.e., indices of pixels in SEG which
+                   constitute a region mask
+            ninstance : number of times image should be
+                        used to place text.
+
+            depth : HxW depth values (float)
+            seg   : HxW segmentation region masks
+            area  : number of pixels in each region
+            label : region labels == unique(seg) / {0}
+                   i.e., indices of pixels in SEG which
+                   constitute a region mask
+            ninstance : number of times image should be
+                        used to place text.
+
             res : a list of dictionaries, one for each of 
                   the image instances.
                   Each dictionary has the following structure:
@@ -698,3 +738,42 @@ class RendererV3(object):
                 idict['labeled_region'] = regions['label']
                 res.append(idict.copy())
         return res
+
+
+
+
+if __name__=='__main__':
+    # img = cv2.cvtColor(cv2.imread('1.png'), cv2.COLOR_BGR2RGB)
+    img = cv2.imread('2.jpg')
+    
+    size = (1024, 614)
+    img = cv2.resize(img, size, interpolation = cv2.INTER_AREA)
+    
+    zero_mask = np.zeros((img.shape[:2])).astype('uint8')
+    
+    # start_p = (20,20)
+    # end_p = (600,100)
+    # color = 0
+    # thickless = -1
+    # mask = cv2.rectangle(zero_mask, start_p, end_p, color, thickless).astype('uint8')
+    # mask = cv2.rectangle(mask, (400,400), (600,500), 0, thickless).astype('uint8')
+    
+    renderer = RendererV3('data')
+    im_final, text, bb, textmask = renderer.place_plain_text(img, zero_mask)
+    
+    for i in range(20):
+        im_final, text, bb, textmask = renderer.place_plain_text(img.copy(), zero_mask)
+        try:
+            im_final, text, bb, textmask = renderer.place_plain_text(im_final.copy(), textmask)
+        except: pass
+        im_name = 'results/'+str(i)+'.jpg'
+        cv2.imwrite(im_name, im_final)
+    
+    # cv2.imshow('background', im_final)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+    
+    
+    
+    
+    

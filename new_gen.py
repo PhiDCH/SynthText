@@ -28,13 +28,6 @@ def get_datalist(data_path):
 
 
 def main(data_list, output):
-    """
-    Entry point.
-
-    Args:
-        viz: display generated images. If this flag is true, needs user input to continue with every loop iteration.
-        output_masks: output masks of text, which was used during generation
-    """
     renderer = RendererV3('data')
     for i, (img_path, seg_path, dep_path) in enumerate(data_list):
         try:

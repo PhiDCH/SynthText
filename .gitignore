@@ -1,0 +1,9 @@
+.vscode
+__pycache__
+*.ipynb
+*.png
+*.jpg
+data
+data_new
+prep_sripts
+results

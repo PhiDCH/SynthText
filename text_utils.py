@@ -83,27 +83,29 @@ class RenderFont(object):
     def __init__(self, data_dir='data'):
         # distribution over the type of text:
         # whether to get a single word, paragraph or a line:
-        self.p_text = {0.0 : 'WORD',
-                       0.0 : 'LINE',
-                       1.0 : 'PARA'}
+        self.p_text = {0.1 : 'WORD',
+                       0.2 : 'LINE',
+                       0.7 : 'PARA'}
 
         ## TEXT PLACEMENT PARAMETERS:
-        self.f_shrink = 0.90
+        self.f_shrink = 0.9
         self.max_shrink_trials = 5 # 0.9^5 ~= 0.6
         # the minimum number of characters that should fit in a mask
         # to define the maximum font height.
-        self.min_nchar = 2
-        self.min_font_h = 16 #px : 0.6*12 ~ 7px <= actual minimum height
+        self.min_nchar = 1
+        self.min_font_h = 10 #px : 0.6*12 ~ 7px <= actual minimum height
         self.max_font_h = 120 #px
         self.p_flat = 0.10
 
         # curved baseline:
-        self.p_curved = 1.0
+        self.p_curved = 0.9
         self.baselinestate = BaselineState()
 
         # text-source : gets english text:
+        # self.text_source = TextSource(min_nchar=self.min_nchar,
+        #                               fn=osp.join(data_dir,'newsgroup/test.txt'))
         self.text_source = TextSource(min_nchar=self.min_nchar,
-                                      fn=osp.join(data_dir,'newsgroup/newsgroup.txt'))
+                                      fn=osp.join(data_dir,'newsgroup/test.txt'))
 
         # get font-state object:
         self.font_state = FontState(data_dir)
@@ -398,9 +400,9 @@ class FontState(object):
     Defines the random state of the font rendering  
     """
     size = [50, 10]  # normal dist mean, std
-    underline = 0.05
+    underline = 0.0
     strong = 0.5
-    oblique = 0.2
+    oblique = 0.5
     wide = 0.5
     strength = [0.05, 0.1]  # uniform dist in this interval
     underline_adjustment = [1.0, 2.0]  # normal dist mean, std
@@ -408,7 +410,7 @@ class FontState(object):
     border = 0.25
     random_caps = -1 ## don't recapitalize : retain the capitalization of the lexicon
     capsmode = [str.lower, str.upper, str.capitalize]  # lower case, upper case, proper noun
-    curved = 0.2
+    curved = 0.9
     random_kerning = 0.2
     random_kerning_amount = 0.1
 
@@ -483,7 +485,7 @@ class FontState(object):
             'strong': np.random.rand() < self.strong,
             'oblique': np.random.rand() < self.oblique,
             'strength': (self.strength[1] - self.strength[0])*np.random.rand() + self.strength[0],
-            'char_spacing': int(self.kerning[3]*(np.random.beta(self.kerning[0], self.kerning[1])) + self.kerning[2]),
+            'char_spacing': int(self.kerning[3]*(np.random.beta(self.kerning[0], self.kerning[1])) + self.kerning[2]/2),
             'border': np.random.rand() < self.border,
             'random_caps': np.random.rand() < self.random_caps,
             'capsmode': random.choice(self.capsmode),
@@ -532,7 +534,7 @@ class TextSource(object):
         self.p_para_nword = [1.7,3.0,10] # beta: (a,b), max_nword
 
         # probability to center-align a paragraph:
-        self.center_para = 0.5
+        self.center_para = 0.9
 
 
     def check_symb_frac(self, txt, f=0.35):
